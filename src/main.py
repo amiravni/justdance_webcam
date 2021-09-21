@@ -3,7 +3,7 @@ import time
 from pose_module import VideoPoseDetector
 from video_module import PlaySyncVideo
 from multiprocessing import Process, Queue, current_process
-from analysis_module import show_two_poses
+from analysis_module import compare_pose
 
 def web_cam_process(res_queue):
     file_path = 0
@@ -21,7 +21,7 @@ def compare_poses(res_queue1, res_queue2):
             last_value1 = res_queue1.get()
         while res_queue2.qsize() > 0:
             last_value2 = res_queue2.get()
-        show_two_poses(last_value1, last_value2)
+        compare_pose(last_value1, last_value2)
         while res_queue1.qsize() == 0 or res_queue2.qsize() == 0:
             time.sleep(0.01)
 
