@@ -2,7 +2,7 @@ import cv2
 import mediapipe as mp
 import time
 import pickle
-from video_module import VideoReader
+from video_module import VideoReader, VideoWriter
 
 
 class PoseDetector:
@@ -57,23 +57,30 @@ class PoseDetector:
 
 
 class VideoPoseDetector(PoseDetector):
-    def __init__(self, video_path, flip_h=False, **kwargs):
+    def __init__(self, video_path, flip_h=False, start_sec=0, **kwargs):
         PoseDetector.__init__(self, **kwargs)
         self.video_path = video_path
         self.flip_h = flip_h
-        self.vid_reader = VideoReader(video_path)
+        self.vid_reader = VideoReader(video_path, start_sec=start_sec)
 
-    def create_pose_data(self, output='', visualize=False, res_queue=None):
+    def create_pose_data(self, output='', visualize=False, save_video=False, res_queue=None):
+        if save_video:
+            self.video_path = self.video_path + '_new.mp4'
+            video_writer = VideoWriter(path=self.video_path, ref_video=self.vid_reader.cap)
         if output == 'same':
             output = self.video_path + '.pkl'
         pose_data = []
         frame_count = 0
         pTime = 0
+
         while True:
             img = self.vid_reader.read_frame(self.flip_h)
+            #img = cv2.resize(img, (360, 640))
             if img is None:
                 break
             img = self.findPose(img)
+            if save_video:
+                video_writer.write_frame(img)
             if len(output) > 0:
                 pose_data.append(self.results.pose_landmarks)
             if res_queue:
@@ -87,6 +94,9 @@ class VideoPoseDetector(PoseDetector):
                 cv2.putText(img, str(int(fps)), (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 3)
                 cv2.imshow("Image", img)
                 cv2.waitKey(1)
+            else:
+                if not frame_count % 30:
+                    print(fps, (frame_count / self.vid_reader.frame_count) * 100.0)
 
         if len(output) > 0:
             with open(output, 'wb') as fid:
@@ -94,8 +104,8 @@ class VideoPoseDetector(PoseDetector):
 
 
 def main():
-    file_path = './curr_video/Just Dance 2016 - Good Feeling - Flo rida - 5 Stars.mp4'
-    #file_path = 0
+    #file_path = './curr_video/Just Dance 2016 - Good Feeling - Flo rida - 5 Stars.mp4'
+    file_path = 0
     vid_detector = VideoPoseDetector(file_path)
     vid_detector.create_pose_data(output='', visualize=True)
 

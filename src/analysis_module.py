@@ -12,7 +12,9 @@ pose_idxs = {
 }
 
 font = cv2.FONT_HERSHEY_SIMPLEX
-
+RED = (0, 0, 255)
+GREEN = (0, 255, 0)
+BLUE = (255, 0 , 0)
 
 def get_bias_var(pose, pts=pose_idxs['BODY']):
     x = [pose.landmark[pt].x for pt in pts]
@@ -22,19 +24,27 @@ def get_bias_var(pose, pts=pose_idxs['BODY']):
     var = np.array([np.var(x), np.var(y), np.var(z)])
     return bias, var
 
+
+def choose_color(num, thresh=0.15, low=GREEN, high=RED):
+    if num < thresh:
+        return low
+    else:
+        return high
+
+
 def show_two_poses(pose1, pose2, avg_dist=None, vec_dist=None):
     blank_image = np.zeros((1000, 1000, 3), np.uint8)
     mpDraw = mp.solutions.drawing_utils
     mpDraw.draw_landmarks(blank_image, pose1, mp.solutions.pose.POSE_CONNECTIONS,
-                          landmark_drawing_spec=mp.solutions.drawing_utils.DrawingSpec(color=(0, 0, 255)))
+                          landmark_drawing_spec=mp.solutions.drawing_utils.DrawingSpec(color=RED, thickness=2, circle_radius=4))
     mpDraw.draw_landmarks(blank_image, pose2, mp.solutions.pose.POSE_CONNECTIONS,
-                          landmark_drawing_spec=mp.solutions.drawing_utils.DrawingSpec(color=(0, 255, 0)))
+                          landmark_drawing_spec=mp.solutions.drawing_utils.DrawingSpec(color=GREEN))
     if avg_dist:
-        cv2.putText(blank_image, "{:.2f}".format(avg_dist), (100, 100), font, 3, (0, 0, 255), 5, cv2.LINE_AA)
+        cv2.putText(blank_image, "{:.2f}".format(avg_dist), (100, 100), font, 3, choose_color(avg_dist), 5, cv2.LINE_AA)
     if vec_dist:
         gap = 0
         for dist in vec_dist:
-            cv2.putText(blank_image, "{:.2f}".format(dist), (100 + gap, 200), font, 2, (0, 255, 0), 4, cv2.LINE_AA)
+            cv2.putText(blank_image, "{:.2f}".format(dist), (100 + gap, 200), font, 2, choose_color(dist), 4, cv2.LINE_AA)
             gap += 200
     cv2.imshow("compare", blank_image)
     cv2.waitKey(1)

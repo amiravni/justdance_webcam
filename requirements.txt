@@ -3,3 +3,6 @@ mediapipe~=0.8.7.3
 numpy~=1.21.2
 ffpyplayer~=4.3.2
 pytube~=11.0.1
+easygui~=0.98.2
+Flask~=2.0.1
+ffmpeg-python~=0.2.0
