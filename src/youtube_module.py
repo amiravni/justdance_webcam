@@ -2,9 +2,10 @@ from pytube import YouTube
 from pose_module import VideoPoseDetector
 import ffmpeg
 
-url = 'https://www.youtube.com/watch?v=60viN3qOVzU&ab_channel=JustDanceMixx'
+# url = 'https://www.youtube.com/watch?v=VDR-jJnVqPc&t=12s&ab_channel=jomarocasgameplay'
+# url_start_sec = 12
+url = 'https://www.youtube.com/watch?v=6Q7-tzCCh3w&ab_channel=FunnyKids'
 url_start_sec = 0
-
 video_dir = "./curr_video"
 
 def progress_handler(progress_info):
@@ -31,7 +32,7 @@ def add_pose(file_path):
 
 def download_video(url):
     video = YouTube(url)
-    res_itag = video.streams.filter(file_extension="mp4", res="720p")[0].itag
+    res_itag = video.streams.filter(file_extension="mp4", res="360p")[0].itag
     video.streams.get_by_itag(res_itag).download(video_dir)
     return '{}/{}.mp4'.format(video_dir, video.title.replace("'", "").replace("*", "").replace("?", ""))
 

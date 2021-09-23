@@ -27,7 +27,12 @@ def PlaySyncVideo(video_path, pose_path, draw_lm=False, res_queue=None, local_vi
     mpDraw = mp.solutions.drawing_utils
     video = cv2.VideoCapture(video_path)
     fps = video.get(cv2.CAP_PROP_FPS)
-
+    h, w = video.get(cv2.CAP_PROP_FRAME_HEIGHT), video.get(cv2.CAP_PROP_FRAME_WIDTH)
+    cv2.namedWindow('Video', cv2.WINDOW_NORMAL)
+    if h < 400.0 or w < 400:
+        ratio = h/w
+        new_width = 1440
+        cv2.resizeWindow('Video', new_width, int(ratio * new_width))
     player = MediaPlayer(video_path)
     frame_count = 0
     last_frame_time = 0.0
@@ -36,7 +41,7 @@ def PlaySyncVideo(video_path, pose_path, draw_lm=False, res_queue=None, local_vi
         if (time.time() - first_time) >= last_frame_time + (1 / fps):
             grabbed, frame = video.read()
             if draw_lm:
-                mpDraw.draw_landmarks(frame, pose_data[frame_count], mp.solutions.pose.POSE_CONNECTIONS)
+                mpDraw.draw_landmarks(frame, pose_data[frame_count][0], mp.solutions.pose.POSE_CONNECTIONS)
             if res_queue:
                 res_queue.put(pose_data[frame_count])
             audio_frame, val = player.get_frame()

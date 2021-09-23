@@ -28,7 +28,6 @@ class PoseDetector:
     def findPose(self, img, draw=True):
         imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         self.results = self.pose.process(imgRGB)
-        #print(results.pose_landmarks)
         if self.results.pose_landmarks:
             if draw:
                 self.mpDraw.draw_landmarks(img, self.results.pose_landmarks, self.mpPose.POSE_CONNECTIONS)
@@ -82,9 +81,9 @@ class VideoPoseDetector(PoseDetector):
             if save_video:
                 video_writer.write_frame(img)
             if len(output) > 0:
-                pose_data.append(self.results.pose_landmarks)
+                pose_data.append([self.results.pose_landmarks, self.results.pose_world_landmarks])
             if res_queue:
-                res_queue.put(self.results.pose_landmarks)
+                res_queue.put([self.results.pose_landmarks, self.results.pose_world_landmarks])
             frame_count += 1
             cTime = time.time()
             fps = 1 / (cTime - pTime)
