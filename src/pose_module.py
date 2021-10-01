@@ -3,6 +3,7 @@ import mediapipe as mp
 import time
 import pickle
 from video_module import VideoReader, VideoWriter
+import numpy as np
 
 
 class PoseDetector:
@@ -62,7 +63,13 @@ class VideoPoseDetector(PoseDetector):
         self.flip_h = flip_h
         self.vid_reader = VideoReader(video_path, start_sec=start_sec)
 
-    def create_pose_data(self, output='', visualize=False, save_video=False, res_queue=None):
+        self.use_mask = ('ENABLE_SEGMENTATION' in kwargs and kwargs['ENABLE_SEGMENTATION'])
+        if self.use_mask:
+            self.bg_image = np.zeros((int(self.vid_reader.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+                                      int(self.vid_reader.cap.get(cv2.CAP_PROP_FRAME_WIDTH)), 3), dtype=np.uint8)
+            self.bg_image[:] = (0, 0, 0)
+
+    def create_pose_data(self, output='', visualize=False, save_video=False, res_queue=None, print_progress=False):
         if save_video:
             self.video_path = self.video_path + '_new.mp4'
             video_writer = VideoWriter(path=self.video_path, ref_video=self.vid_reader.cap)
@@ -77,13 +84,23 @@ class VideoPoseDetector(PoseDetector):
             #img = cv2.resize(img, (360, 640))
             if img is None:
                 break
-            img = self.findPose(img)
+            img = self.findPose(img, draw=visualize)
+
+            if self.use_mask and self.results.segmentation_mask is not None:
+                try:
+                    condition = np.stack((self.results.segmentation_mask,) * 3, axis=-1) > 0.1
+                    img = np.where(condition, img, self.bg_image)
+                except:
+                    pass
+                    #print('segmentation failed')
+
+
             if save_video:
                 video_writer.write_frame(img)
             if len(output) > 0:
                 pose_data.append([self.results.pose_landmarks, self.results.pose_world_landmarks])
             if res_queue:
-                res_queue.put([self.results.pose_landmarks, self.results.pose_world_landmarks])
+                res_queue.put([[self.results.pose_landmarks, self.results.pose_world_landmarks], img])
             frame_count += 1
             cTime = time.time()
             fps = 1 / (cTime - pTime)
@@ -94,7 +111,7 @@ class VideoPoseDetector(PoseDetector):
                 cv2.imshow("Image", img)
                 cv2.waitKey(1)
             else:
-                if not frame_count % 30:
+                if print_progress and not frame_count % 30:
                     print(fps, (frame_count / self.vid_reader.frame_count) * 100.0)
 
         if len(output) > 0:
@@ -105,32 +122,8 @@ class VideoPoseDetector(PoseDetector):
 def main():
     #file_path = './curr_video/Just Dance 2016 - Good Feeling - Flo rida - 5 Stars.mp4'
     file_path = 0
-    vid_detector = VideoPoseDetector(file_path)
+    vid_detector = VideoPoseDetector(file_path, MODEL_COMPLEXITY=0, ENABLE_SEGMENTATION=True)
     vid_detector.create_pose_data(output='', visualize=True)
-
-    if False:
-        cap_wc = cv2.VideoCapture(0)
-        cap_vid = cv2.VideoCapture('./curr_video/Just Dance 2016 - Good Feeling - Flo rida - 5 Stars.mp4')
-        pTime = 0
-        detector_wc = PoseDetector()
-        detector_vid = PoseDetector()
-        while True:
-            success, img_wc = cap_wc.read()
-            img_wc = detector_wc.findPose(img_wc)
-            lmList = detector_wc.getPosition(img_wc)
-            success, img_vid = cap_vid.read()
-            img_vid = detector_vid.findPose(img_vid)
-            lmList = detector_vid.getPosition(img_vid)
-            cTime = time.time()
-            fps = 1 / (cTime - pTime)
-            pTime = cTime
-
-            cv2.putText(img_wc, str(int(fps)), (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 3)
-            cv2.imshow("Image_wc", img_wc)
-            cv2.putText(img_vid, str(int(fps)), (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 3)
-            cv2.imshow("Image_vid", img_vid)
-            cv2.waitKey(1)
-
 
 if __name__ == "__main__":
     main()

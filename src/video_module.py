@@ -19,7 +19,7 @@ def gen_frame_to_web(frame):
     return (b'--frame\r\n'
             b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')  # concat frame one by one and show result
 
-def PlaySyncVideo(video_path, pose_path, draw_lm=False, res_queue=None, local_video=True):
+def PlaySyncVideo(video_path, pose_path, draw_lm=False, res_queue=None, local_video=True, visualize=False):
     if pose_path == 'same':
         pose_path = video_path + '.pkl'
     with open(pose_path, 'rb') as handle:
@@ -28,11 +28,12 @@ def PlaySyncVideo(video_path, pose_path, draw_lm=False, res_queue=None, local_vi
     video = cv2.VideoCapture(video_path)
     fps = video.get(cv2.CAP_PROP_FPS)
     h, w = video.get(cv2.CAP_PROP_FRAME_HEIGHT), video.get(cv2.CAP_PROP_FRAME_WIDTH)
-    cv2.namedWindow('Video', cv2.WINDOW_NORMAL)
-    if h < 400.0 or w < 400:
-        ratio = h/w
-        new_width = 1440
-        cv2.resizeWindow('Video', new_width, int(ratio * new_width))
+    if local_video and visualize:
+        cv2.namedWindow('Video', cv2.WINDOW_NORMAL)
+        if h < 400.0 or w < 400:
+            ratio = h/w
+            new_width = 1440
+            cv2.resizeWindow('Video', new_width, int(ratio * new_width))
     player = MediaPlayer(video_path)
     frame_count = 0
     last_frame_time = 0.0
@@ -43,21 +44,24 @@ def PlaySyncVideo(video_path, pose_path, draw_lm=False, res_queue=None, local_vi
             if draw_lm:
                 mpDraw.draw_landmarks(frame, pose_data[frame_count][0], mp.solutions.pose.POSE_CONNECTIONS)
             if res_queue:
-                res_queue.put(pose_data[frame_count])
+                res_queue.put([pose_data[frame_count], frame])
             audio_frame, val = player.get_frame()
+            if last_frame_time == 0:
+                first_time = time.time() - val
             last_frame_time = val
             frame_count += 1
             if not grabbed:
                 print("End of video")
                 break
             if local_video:
-                if cv2.waitKey(1) & 0xFF == ord("q"):
-                    break
-                cv2.imshow("Video", frame)
+                if visualize:
+                    if cv2.waitKey(1) & 0xFF == ord("q"):
+                        break
+                    cv2.imshow("Video", frame)
             else:
                 yield gen_frame_to_web(frame)
         else:
-            if local_video:
+            if local_video and visualize:
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
 
@@ -77,6 +81,15 @@ class VideoReader:
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.fps * start_sec)
         if not is_open(self.cap):
             return None
+
+    def get_data(self):
+        data = {
+            'width': int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
+            'height': int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+            'fps': self.fps
+        }
+        return data
+
 
     def read_frame(self, flip_h=False):
         if not is_open(self.cap):
@@ -136,8 +149,8 @@ class VideoWriter:
 
 
 if __name__ == '__main__':
-    res = PlaySyncVideo(video_path='./curr_video/Just Dance 2016 - Good Feeling - Flo rida - 5 Stars.mp4',
-                  pose_path='same')
+    res = PlaySyncVideo(video_path='./curr_video/Just Dance 2016 - Good Feeling - Flo rida - 5 Stars.mp4_new.mp4',
+                  pose_path='same',draw_lm=True, visualize=True)
     next(res)
 
     if False:

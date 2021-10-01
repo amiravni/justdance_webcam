@@ -1,4 +1,5 @@
-/src/curr_video
+/src/curr_video/*.mp4
+/src/curr_video/*.pkl
 
 # Created by .ignore support plugin (hsz.mobi)
 ### Python template
