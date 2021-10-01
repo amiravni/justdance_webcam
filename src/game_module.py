@@ -99,7 +99,6 @@ class StickerModule:
                 img = sticker.add_to_image(img)
             if sticker.done:
                 self.sticker_sequence.remove(sticker)
-        print(len(self.sticker_sequence))
         return img
 
 
