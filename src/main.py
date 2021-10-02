@@ -4,18 +4,14 @@ from pose_module import VideoPoseDetector
 from video_module import PlaySyncVideo, VideoReader
 from multiprocessing import Process, Queue, current_process
 from game_module import GameModule
-import subprocess
+from screeninfo import get_monitors
 
-cmd = ['xrandr']
-cmd2 = ['grep', '*']
-p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-p2 = subprocess.Popen(cmd2, stdin=p.stdout, stdout=subprocess.PIPE)
-p.stdout.close()
-resolution_string, junk = p2.communicate()
-resolution = resolution_string.split()[0]
-screen_width, screen_height = str(resolution).strip("b'").split('x')
-screen_width = int(screen_width)
-screen_height = int(screen_height)
+
+for m in get_monitors():
+    screen_width = m.width
+    screen_height = m.height
+    break
+
 
 def get_video_data(file_path=None, video_reader=None):
     if file_path:
