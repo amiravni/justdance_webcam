@@ -6,3 +6,4 @@ pytube~=11.0.1
 easygui~=0.98.2
 Flask~=2.0.1
 ffmpeg-python~=0.2.0
+screeninfo~=0.7
