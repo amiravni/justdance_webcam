@@ -19,7 +19,7 @@ def gen_frame_to_web(frame):
     return (b'--frame\r\n'
             b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')  # concat frame one by one and show result
 
-def PlaySyncVideo(video_path, pose_path, draw_lm=False, res_queue=None, local_video=True, visualize=False):
+def PlaySyncVideo(video_path, pose_path, draw_lm=False, res_queue=None, visualize=False):
     if pose_path == 'same':
         pose_path = video_path + '.pkl'
     with open(pose_path, 'rb') as handle:
@@ -28,7 +28,7 @@ def PlaySyncVideo(video_path, pose_path, draw_lm=False, res_queue=None, local_vi
     video = cv2.VideoCapture(video_path)
     fps = video.get(cv2.CAP_PROP_FPS)
     h, w = video.get(cv2.CAP_PROP_FRAME_HEIGHT), video.get(cv2.CAP_PROP_FRAME_WIDTH)
-    if local_video and visualize:
+    if visualize:
         cv2.namedWindow('Video', cv2.WINDOW_NORMAL)
         if h < 400.0 or w < 400:
             ratio = h/w
@@ -53,15 +53,12 @@ def PlaySyncVideo(video_path, pose_path, draw_lm=False, res_queue=None, local_vi
             if not grabbed:
                 print("End of video")
                 break
-            if local_video:
-                if visualize:
-                    if cv2.waitKey(1) & 0xFF == ord("q"):
-                        break
-                    cv2.imshow("Video", frame)
-            else:
-                yield gen_frame_to_web(frame)
+            if visualize:
+                if cv2.waitKey(1) & 0xFF == ord("q"):
+                    break
+                cv2.imshow("Video", frame)
         else:
-            if local_video and visualize:
+            if visualize:
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
 
@@ -151,7 +148,7 @@ class VideoWriter:
 if __name__ == '__main__':
     res = PlaySyncVideo(video_path='./curr_video/Just Dance 2016 - Good Feeling - Flo rida - 5 Stars.mp4_new.mp4',
                   pose_path='same',draw_lm=True, visualize=True)
-    next(res)
+    #next(res)
 
     if False:
         # video_stream = VideoReader('/home/makeruser/nitay/video.mp4', show=True)

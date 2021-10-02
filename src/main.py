@@ -28,23 +28,27 @@ def web_cam_process(res_queue, web_cam_data):
     web_cam_data.put(get_video_data(video_reader=vid_detector.vid_reader))
     vid_detector.create_pose_data(output='', visualize=False, res_queue=res_queue)
 
-def video_process(res_queue, video_data):
-    file_path = easygui.fileopenbox(default='./curr_video/*.mp4')
-    video_data.put(get_video_data(file_path=file_path))
-    res = PlaySyncVideo(video_path=file_path, pose_path='same', draw_lm=False, res_queue=res_queue, local_video=True, visualize=False)
-    next(res)
 
-def game_process(res_queue1, res_queue2, web_cam_data, video_data):
+def video_process(res_queue, video_data, default_path='./curr_video/*.mp4'):
+    file_path = easygui.fileopenbox(default=default_path)
+    video_data.put(get_video_data(file_path=file_path))
+    res = PlaySyncVideo(video_path=file_path, pose_path='same', draw_lm=False, res_queue=res_queue, visualize=False)
+    #next(res)
+
+def game_process(res_queue1, res_queue2, web_cam_data, video_data, stream_queue=None, png_path='./png/'):
     game_module = GameModule(wc_data=web_cam_data.get(),
                              vid_data=video_data.get()
-                             , width=screen_width*0.9, height=screen_height*0.9)
+                             ,width=screen_width*0.9, height=screen_height*0.9,
+                             stream_queue=stream_queue,
+                             png_path=png_path)
     while True:
         last_value1, last_value2 = None, None
         while res_queue1.qsize() > 0:
             last_value1 = res_queue1.get()
         while res_queue2.qsize() > 0:
             last_value2 = res_queue2.get()
-        game_module.update_game(last_value1, last_value2)
+        if not game_module.update_game(last_value1, last_value2):
+            break
         while res_queue1.qsize() == 0 or res_queue2.qsize() == 0:
             time.sleep(0.01)
 
@@ -61,9 +65,12 @@ if __name__ == '__main__':
     vid_process.daemon = True
     vid_process.start()
 
-    cp_process = Process(name='compare_poses', target=game_process, args=(wc_queue, vid_queue, wc_data, video_data))
+    stream_queue = None  # For Web?
+    cp_process = Process(name='game_process', target=game_process, args=(wc_queue, vid_queue, wc_data, video_data, stream_queue))
     cp_process.daemon = True
     cp_process.start()
 
-    while True:
-        time.sleep(10000)
+    while cp_process.is_alive() and vid_process.is_alive() and wc_process.is_alive():
+        time.sleep(1)
+
+    print('All Done!')

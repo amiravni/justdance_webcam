@@ -17,6 +17,7 @@ font = cv2.FONT_HERSHEY_SIMPLEX
 RED = (0, 0, 255)
 GREEN = (0, 255, 0)
 BLUE = (255, 0, 0)
+BLACK = (0, 0, 0)
 
 pose_idxs = {
     'BODY': [11, 12, 23, 24],
@@ -106,7 +107,7 @@ class StickerModule:
 
 
 class GameGUI:
-    def __init__(self, wc_data=None, vid_data=None, width=None, height=None, multiply=2.0):
+    def __init__(self, wc_data=None, vid_data=None, width=None, height=None, multiply=2.0, stream_queue=None, png_path='./png/'):
         if width is None:
             self.screen_width = int(multiply * vid_data['width'])
             self.screen_height = int(multiply * vid_data['height'])
@@ -120,7 +121,8 @@ class GameGUI:
             self.screen_vid_equal = True
         else:
             self.screen_vid_equal = False
-        self.sticker_module = StickerModule(path='./png/')
+        self.sticker_module = StickerModule(path=png_path)
+        self.stream_queue = stream_queue
         print('GUI initialized -> {}X{}'.format(str(self.screen_width,), str(self.screen_height)))
 
     def choose_color(self, num, thresh=CURR_THRESH, low=GREEN, high=RED, opposite=False):
@@ -133,12 +135,12 @@ class GameGUI:
 
     def merge_frames(self, final_frame, wc_frame, vid_frame):
         final_frame = cv2.addWeighted(final_frame, 0.25, vid_frame, 0.75, 0.0)
-        wc_frame = cv2.resize(wc_frame, (int(self.screen_width/3), int(self.screen_height/3)))
+        wc_frame = cv2.resize(wc_frame, (int(self.screen_width/2.0), int(self.screen_height/2.0)))
         blended = final_frame[-wc_frame.shape[0]:, :wc_frame.shape[1]]
         blended[np.where(wc_frame > 0)] = wc_frame[np.where(wc_frame > 0)]
         return final_frame
 
-    def update_gui(self, frame1, frame2, pose1, pose2, scores, curr_score, vec_dist):
+    def update_gui(self, frame1, frame2, pose1, pose2, scores):
         if not self.screen_vid_equal:
             frame2 = cv2.resize(frame2, (self.screen_width, self.screen_height))
 
@@ -150,37 +152,32 @@ class GameGUI:
                                                                                            circle_radius=4))
         self.mpDraw.draw_landmarks(gui_frame, pose2, mp.solutions.pose.POSE_CONNECTIONS,
                               landmark_drawing_spec=mp.solutions.drawing_utils.DrawingSpec(color=GREEN))
-        if DEBUG:
-            if curr_score:
-                cv2.putText(gui_frame, "{:.2f}".format(curr_score), (100, 100), font, 3, self.choose_color(curr_score), 5,
-                            cv2.LINE_AA)
-            if vec_dist:
-                gap = 0
-                for dist in vec_dist:
-                    cv2.putText(gui_frame, "{:.2f}".format(dist), (100 + gap, 200), font, 2, self.choose_color(dist), 4,
-                                cv2.LINE_AA)
-                    gap += 200
 
-        green_box_sz = int(100 * (1-scores.window_score_ratio[0]))
-        red_box_sz = int(100*(1-scores.window_score_ratio[1]))
-        gui_frame = cv2.rectangle(gui_frame, (650, 150), (700, 250), BLUE, 1)
-        gui_frame = cv2.rectangle(gui_frame, (650, 150+red_box_sz), (700, 250), RED, -1)
-        gui_frame = cv2.rectangle(gui_frame, (650, 150), (700, 250-green_box_sz), GREEN, -1)
 
+        gui_frame = scores.draw_scores(gui_frame)
         gui_frame = self.sticker_module.update_stickers(gui_frame, scores)
 
         cv2.putText(gui_frame, "SCORE: {:.0f}".format(scores.final_score),
                     (500, 100), font, 2, self.choose_color(scores.final_score, thresh=10, opposite=True), 4, cv2.LINE_AA)
-        cv2.imshow("compare", gui_frame)
-        cv2.waitKey(1)
+        if self.stream_queue is None:
+            cv2.imshow("compare", gui_frame)
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                print('Exiting...')
+                return False
+        else:
+            self.stream_queue.put(gui_frame)
+
+        return True
 
 
 class Score:
     def __init__(self):
         self.final_score = 0.0
         self.curr_score = 0.0
+        self.vec_dist = []
         self.window_score = [0.0, 0.0]
         self.window_score_ratio = [0, 0]
+        self.time_passed = 0.0
         self.window_first_time = time.time()
         self.window_time = WINDOW_TIME
         self.curr_thresh = CURR_THRESH
@@ -191,31 +188,55 @@ class Score:
         self.window_score_ratio = [0, 0]
         self.window_first_time = time.time()
 
-    def update_scores(self, curr_score):
+    def update_scores(self, curr_score, vec_dist=[]):
         self.curr_score = curr_score
+        self.vec_dist = vec_dist
         if curr_score < self.curr_thresh:
             self.window_score[0] += 1
         else:
             self.window_score[1] += 1
         sum_cnt = np.sum(self.window_score)
+        self.time_passed = time.time() - self.window_first_time
         if sum_cnt > 0:
             self.window_score_ratio = [self.window_score[0] / sum_cnt,
                                        self.window_score[1] / sum_cnt]
         else:
             self.window_score_ratio = [0, 0]
 
-        if time.time() - self.window_first_time > WINDOW_TIME:
+        if self.time_passed > WINDOW_TIME:
             if self.window_score[0] / np.sum(self.window_score) > self.window_thresh:
                 self.final_score += 1
             self.window_score = [0.0, 0.0]
             self.window_first_time = time.time()
 
+    def draw_scores(self, gui_frame, x1=(650, 150), x2=(700, 250)):
+        if DEBUG:
+            if self.curr_score:
+                cv2.putText(gui_frame, "{:.2f}".format(self.curr_score), (100, 100),
+                            font, 3, self.choose_color(self.curr_score), 5, cv2.LINE_AA)
+            if self.vec_dist:
+                gap = 0
+                for dist in self.vec_dist:
+                    cv2.putText(gui_frame, "{:.2f}".format(dist), (100 + gap, 200), font, 2, self.choose_color(dist), 4,
+                                cv2.LINE_AA)
+                    gap += 200
+
+        height = x2[1] - x1[1]
+        time_ratio = self.time_passed / self.window_time
+        green_box_sz = int(height * time_ratio * (1-self.window_score_ratio[0]))
+        red_box_sz = int(height * time_ratio * (1-self.window_score_ratio[1]))
+        black_box_sz = int(height * (1-time_ratio))
+        gui_frame = cv2.rectangle(gui_frame, x1, x2, BLUE, 1)
+        gui_frame = cv2.rectangle(gui_frame, (x1[0], x1[1]+red_box_sz), (x2[0], x2[1]), RED, -1)
+        gui_frame = cv2.rectangle(gui_frame, (x1[0], x1[1]+black_box_sz), (x2[0], x2[1]-green_box_sz), GREEN, -1)
+        gui_frame = cv2.rectangle(gui_frame, (x1[0], x1[1]), (x2[0], x1[1]+black_box_sz), BLACK, -1)
+        return gui_frame
 
 class GameModule:
-    def __init__(self, wc_data, vid_data, width=None, height=None):
+    def __init__(self, wc_data, vid_data, width=None, height=None, stream_queue=None, png_path='./png/'):
         self.state = 'INIT'
         self.scores = Score()
-        self.game_gui = GameGUI(wc_data=wc_data, vid_data=vid_data, width=width, height=height)
+        self.game_gui = GameGUI(wc_data=wc_data, vid_data=vid_data, width=width, height=height, stream_queue=stream_queue, png_path=png_path)
         print('game initialized')
 
 
@@ -236,8 +257,11 @@ class GameModule:
                 self.state = 'PLAY'
                 self.scores.reset_window()
             if curr_score and not np.isnan(curr_score):
-                self.scores.update_scores(curr_score)
-            self.game_gui.update_gui(frame1, frame2, pose1_2d_norm, pose2_2d_norm, self.scores, curr_score, vec_dist)
+                self.scores.update_scores(curr_score, vec_dist=vec_dist)
+            if not self.game_gui.update_gui(frame1, frame2, pose1_2d_norm, pose2_2d_norm, self.scores):
+                self.state = 'END'
+                return False
+        return True
 
     def compare_poses(self, last_value1, last_value2):
         return compare_pose(last_value1, last_value2)

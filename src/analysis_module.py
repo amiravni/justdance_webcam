@@ -59,7 +59,7 @@ def normalize_poses(pose1, pose2):
 
 def compare_pose(pose1, pose2):
     ## TODO: Make a class!
-    avg_dist, vec_dist, pose1_2d_norm, pose2_2d_norm = None, None, None, None
+    avg_dist, vec_dist, pose1_2d_norm, pose2_2d_norm = None, [], None, None
     if pose1 and pose2 and pose1[0] and pose2[0]:
         pose1_2d, pose1_3d = pose1[0], pose1[1]
         pose2_2d, pose2_3d = pose2[0], pose2[1]
