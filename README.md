@@ -1,4 +1,4 @@
-#Just Dance - Webcam <--> Video Version
+# Just Dance - Webcam <--> Video Version
 
 ## Installing
 1. git clone https://github.com/amiravni/justdance_webcam
