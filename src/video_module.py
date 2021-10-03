@@ -151,7 +151,6 @@ if __name__ == '__main__':
     #next(res)
 
     if False:
-        # video_stream = VideoReader('/home/makeruser/nitay/video.mp4', show=True)
         video_stream = VideoReader(0, show=True)
         video_file = VideoWriter('../videos/test_video.mp4',
                                  ref_video=video_stream.cap)
