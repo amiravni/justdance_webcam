@@ -1,3 +1,6 @@
+#TODO: comparing sliding window and not just one slice
+#TODO: Make a class!
+
 import numpy as np
 
 pose_idxs = {
@@ -53,10 +56,10 @@ def normalize_poses(pose1, pose2):
     for landmark in pose1.landmark:
         landmark = normalize_landmark(landmark, bias1, bias2, var)
 
+
     return pose1, pose2
 
 def compare_pose(pose1, pose2):
-    ## TODO: Make a class!
     avg_dist, vec_dist, pose1_2d_norm, pose2_2d_norm = None, [], None, None
     if pose1 and pose2 and pose1[0] and pose2[0]:
         pose1_2d, pose1_3d = pose1[0], pose1[1]
