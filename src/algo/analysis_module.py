@@ -1,6 +1,4 @@
-import cv2
 import numpy as np
-import mediapipe as mp
 
 pose_idxs = {
     'BODY': [11, 12, 23, 24],

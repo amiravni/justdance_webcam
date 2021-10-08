@@ -1,8 +1,8 @@
 import time
 import easygui
-from pose_module import VideoPoseDetector
-from video_module import PlaySyncVideo, VideoReader
-from multiprocessing import Process, Queue, current_process
+from algo.pose_module import VideoPoseDetector
+from video.video_module import PlaySyncVideo, VideoReader
+from multiprocessing import Process, Queue
 from game_module import GameModule
 from screeninfo import get_monitors
 
@@ -19,8 +19,10 @@ def get_video_data(file_path=None, video_reader=None):
     return video_reader.get_data()
 
 def web_cam_process(res_queue, web_cam_data):
-    file_path = 0
-    vid_detector = VideoPoseDetector(file_path, flip_h=True, MODEL_COMPLEXITY=0, ENABLE_SEGMENTATION=True)
+    cam_location = 0
+    vid_detector = VideoPoseDetector(cam_location, flip_h=True, MODEL_COMPLEXITY=0, ENABLE_SEGMENTATION=True)
+    if not vid_detector.vid_reader.cap.isOpened():
+        vid_detector = VideoPoseDetector(cam_location + 1, flip_h=True, MODEL_COMPLEXITY=0, ENABLE_SEGMENTATION=True)
     web_cam_data.put(get_video_data(video_reader=vid_detector.vid_reader))
     vid_detector.create_pose_data(output='', visualize=False, res_queue=res_queue)
 
@@ -33,8 +35,9 @@ def video_process(res_queue, video_data, default_path='./curr_video/*.mp4'):
 
 def game_process(res_queue1, res_queue2, web_cam_data, video_data, stream_queue=None, png_path='./png/'):
     game_module = GameModule(wc_data=web_cam_data.get(),
-                             vid_data=video_data.get()
-                             ,width=screen_width*0.9, height=screen_height*0.9,
+                             vid_data=video_data.get(),
+                             width=screen_width*0.9,
+                             height=screen_height*0.9,
                              stream_queue=stream_queue,
                              png_path=png_path)
     while True:

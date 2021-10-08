@@ -2,7 +2,7 @@ import cv2
 import mediapipe as mp
 import time
 import pickle
-from video_module import VideoReader, VideoWriter
+from src.video.video_module import VideoReader, VideoWriter
 import numpy as np
 
 

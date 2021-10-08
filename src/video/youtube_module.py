@@ -7,7 +7,7 @@ import ffmpeg
 url = 'https://www.youtube.com/watch?v=g0bkcWQm1RM&list=PL6gDux3wjN2CXZ0zAQLQHbntAcPvOsD_C&index=35&ab_channel=JustDancelikeallStar'
 url_start_sec = 0
 
-video_dir = "./curr_video"
+video_dir = "../curr_video"
 
 def progress_handler(progress_info):
     print('{:.2f}'.format(progress_info['percentage']))

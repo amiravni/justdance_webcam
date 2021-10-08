@@ -1,6 +1,5 @@
 import cv2
 from ffpyplayer.player import MediaPlayer
-import numpy as np
 import time
 import mediapipe as mp
 import pickle
@@ -77,7 +76,9 @@ class VideoReader:
         if start_sec > 0:
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.fps * start_sec)
         if not is_open(self.cap):
-            return None
+            print('Did not find any camera/video at: {}'.format(str(path)))
+        else:
+            print('Loaded camera/video at: {}'.format(str(path)))
 
     def get_data(self):
         data = {
@@ -146,8 +147,8 @@ class VideoWriter:
 
 
 if __name__ == '__main__':
-    res = PlaySyncVideo(video_path='./curr_video/Just Dance 2016 - Good Feeling - Flo rida - 5 Stars.mp4_new.mp4',
-                  pose_path='same',draw_lm=True, visualize=True)
+    res = PlaySyncVideo(video_path='../curr_video/Just Dance 2016 - Good Feeling - Flo rida - 5 Stars.mp4_new.mp4',
+                        pose_path='same', draw_lm=True, visualize=True)
     #next(res)
 
     if False:
